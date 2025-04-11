@@ -1,0 +1,32 @@
+[
+  {
+    "text": "Who is known as the King of Pop?",
+    "answer": "michael jackson",
+    "category": "music"
+  },
+  {
+    "text": "What is the capital of Nigeria?",
+    "answer": "abuja",
+    "category": "africa"
+  },
+  {
+    "text": "Who painted the Mona Lisa?",
+    "answer": "leonardo da vinci",
+    "category": "arts"
+  },
+  {
+    "text": "Which planet is known as the Red Planet?",
+    "answer": "mars",
+    "category": "science"
+  },
+  {
+    "text": "Which team has won the most FIFA World Cups?",
+    "answer": "brazil",
+    "category": "football"
+  },
+  {
+    "text": "What does CPU stand for?",
+    "answer": "central processing unit",
+    "category": "tech"
+  }
+]
