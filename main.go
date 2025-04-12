@@ -14,30 +14,8 @@ import (
 )
 
 var (
-	firstMenu = "<b>Menu 1</b>\n\nA beautiful menu with a shiny inline button."
-	secondMenu = "<b>Menu 2</b>\n\nA better menu with even more shiny inline buttons."
-
-	nextButton = "Next"
-	backButton = "Back"
-	tutorialButton = "Tutorial"
-
-	screaming = false
 	bot * tgbotapi.BotAPI
-
-	firstMenuMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(nextButton, nextButton),
-		),
-	)
-
-	secondMenuMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(backButton, nextButton),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonURL(tutorialButton, "https://dolphjs.com"),
-		),
-	)
+	Category = "general"
 )
 
 func main () {
@@ -50,7 +28,6 @@ func main () {
 		log.Panic(err.Error())
 	}
 
-	src.LoadQuestions()
 	src.LoadLeaderboard()
 
 	bot.Debug = false
@@ -103,35 +80,21 @@ func handleMessage(message *tgbotapi.Message){
 
 	var err error
 
-	// if strings.HasPrefix(text, "/start challenge_") {
-	// 	challengerIDStr := strings.TrimPrefix(text, "/start challenge_")
-	// 	challengerID, err := strconv.ParseInt(challengerIDStr, 10, 64)
-	// if err != nil {
-	// 	bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Invalid challenge link 😕"))
-	// 	return
-	// }
-
-	// 	src.Start1v1Challenge(bot, challengerID, message.From.ID)
-	// 	return
-	// }
-
-	var category string
-	
 	if strings.HasPrefix(text, "/start challenge_") {
 		parts := strings.Split(strings.TrimPrefix(text, "/start challenge_"), "_")
-	if len(parts) != 2 {
-		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Invalid challenge link."))
-		return
-	}
-	challengerID, err := strconv.ParseInt(parts[0], 10, 64)
-	category = parts[1]
+		if len(parts) != 2 {
+			bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Invalid challenge link."))
+			return
+		}
+		challengerID, err := strconv.ParseInt(parts[0], 10, 64)
+		Category = parts[1]
 
-	if err != nil {
-		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Invalid challenge ID."))
-		return
-	}
+		if err != nil {
+			bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Invalid challenge ID."))
+			return
+		}
 
-		src.Start1v1ChallengeWithCategory(bot, challengerID, message.From.ID, category)
+		src.Start1v1ChallengeWithCategory(bot, challengerID, message.From.ID, Category)
 		return
 	}
 
@@ -142,16 +105,8 @@ func handleMessage(message *tgbotapi.Message){
 		src.SendMenu(bot, message.Chat.ID)
 	case "/rank":
 		src.SendLeaderboard(bot, message.Chat.ID)
-	case "/aiq":
-	q, a, err := src.GenerateTriviaQuestion(category)
-	if err != nil {
-		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "❌ Error: " + err.Error()))
-	} else {
-		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "❓ " + q + "\n✅ " + a))
-	}
-
 	default:
-		src.ProcessTriviaAnswer(bot, message, category)
+		src.ProcessTriviaAnswer(bot, message, Category)
 	}
 
 	if err != nil {
@@ -167,7 +122,47 @@ func handleButton(query *tgbotapi.CallbackQuery) {
 		parts := strings.Split(data, "_")
 		gameID := parts[1] + "_" + parts[2] // player1_player2
 		minutes, _ := strconv.Atoi(parts[3])
-		src.StartTimedGame(bot, gameID, "football" , minutes)
+		src.StartTimedGame(bot, gameID, Category , minutes)
+	}
+
+	if strings.HasPrefix(query.Data, "answer_") {
+		// Process the answer
+		parts := strings.Split(data, "_")
+		playerAnswer := parts[1]
+		gameID := parts[2] + "_" + parts[3]
+		game, ok := src.ActiveGames[gameID]
+		if !ok || !game.IsActive {
+			bot.Send(tgbotapi.NewMessage(chatID, "❌ Game not active or found"))
+			return
+		}
+
+		userID := query.From.ID
+
+		// Track if a player has answered
+		if src.AnsweredThisRound[gameID][userID] {
+			bot.Send(tgbotapi.NewMessage(chatID, "🕓 You already answered this one!"))
+			return
+		}
+		src.AnsweredThisRound[gameID][userID] = true
+
+
+		// Check the answer
+		correct := src.CurrentAnswer[gameID]
+		if src.Normalize(playerAnswer) == src.Normalize(correct) {
+				game.Scores[userID]++
+				bot.Send(tgbotapi.NewMessage(chatID, "✅ Correct!"))
+				src.CorrectAnswersThisRound[gameID][userID] = true
+			} else {
+				bot.Send(tgbotapi.NewMessage(chatID, "❌ Wrong! Try again next one."))
+
+			src.WrongAnswersThisRound[gameID][userID] = true
+		}
+
+		// If both players have answered, proceed to the next question
+		if (len(src.CorrectAnswersThisRound[gameID]) > 0) || len(src.WrongAnswersThisRound[gameID]) == 2{
+			// If both players have answered, proceed with another
+			src.SendNextAIQuestion(bot, gameID, Category)
+		}
 	}
 
 

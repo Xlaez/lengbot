@@ -29,7 +29,7 @@ func LoadQuestions() {
 }
 
 func SendNextQuestion(bot *tgbotapi.BotAPI, gameID string) {
-	game := activeGames[gameID]
+	game := ActiveGames[gameID]
 
 	if game.CurrentQ >= len(questions) {
 		EndGame(bot, gameID)

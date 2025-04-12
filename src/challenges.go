@@ -16,7 +16,8 @@ type Challenge struct {
 }
 
 var pendingChallenges = make(map[string]Challenge)
-var CurrentAnswer = make(map[string]string) // key = gameID
+// key = gameID
+var CurrentAnswer = make(map[string]string)
 
 func AskForChallenge(bot *tgbotapi.BotAPI, chatID int64, category string) {
 	caser := cases.Title(language.English)
@@ -58,20 +59,20 @@ func Start1v1ChallengeWithCategory(bot *tgbotapi.BotAPI, challengerID, opponentI
 		return
 	}
 
-	filteredQuestions := FilterQuestionsByCategory(category)
-	if len(filteredQuestions) == 0 {
-		bot.Send(tgbotapi.NewMessage(opponentID, fmt.Sprintf("No questions available for %s ❌", category)))
-		return
-	}
+	// filteredQuestions := FilterQuestionsByCategory(category)
+	// if len(filteredQuestions) == 0 {
+	// 	bot.Send(tgbotapi.NewMessage(opponentID, fmt.Sprintf("No questions available for %s ❌", category)))
+	// 	return
+	// }
 
 	gameID := fmt.Sprintf("%d_%d", challengerID, opponentID)
-	activeGames[gameID] = &TriviaSession{
+	ActiveGames[gameID] = &TriviaSession{
 		Player1:   challengerID,
 		Player2:   opponentID,
 		Scores:    map[int64]int{challengerID: 0, opponentID: 0},
 		CurrentQ:  0,
 		IsActive:  true,
-		Questions: filteredQuestions,
+		// Questions: filteredQuestions,
 	}
 
 	bot.Send(tgbotapi.NewMessage(challengerID, fmt.Sprintf("🎯 %d accepted your %s challenge!", opponentID, category)))
@@ -80,9 +81,6 @@ func Start1v1ChallengeWithCategory(bot *tgbotapi.BotAPI, challengerID, opponentI
 	msg := tgbotapi.NewMessage(challengerID, "⏳ How long should the match last?")
 	msg.ReplyMarkup = durationButtons(gameID)
 	bot.Send(msg)
-
-
-	SendNextQuestion(bot, gameID)
 }
 
 func durationButtons(gameID string) tgbotapi.InlineKeyboardMarkup {
@@ -97,7 +95,7 @@ func durationButtons(gameID string) tgbotapi.InlineKeyboardMarkup {
 
 
 func StartTimedGame(bot *tgbotapi.BotAPI, gameID, category string, minutes int) {
-	game := activeGames[gameID]
+	game := ActiveGames[gameID]
 	if game == nil {
 		return
 	}
@@ -109,7 +107,7 @@ func StartTimedGame(bot *tgbotapi.BotAPI, gameID, category string, minutes int) 
 	bot.Send(tgbotapi.NewMessage(game.Player1, fmt.Sprintf("Game starts now! Duration: %d minutes", minutes)))
 	bot.Send(tgbotapi.NewMessage(game.Player2, fmt.Sprintf("Game starts now! Duration: %d minutes", minutes)))
 
-	sendNextAIQuestion(bot, gameID, category)
+	SendNextAIQuestion(bot, gameID, category)
 
 	// Schedule end
 	go func() {
@@ -118,9 +116,16 @@ func StartTimedGame(bot *tgbotapi.BotAPI, gameID, category string, minutes int) 
 	}()
 }
 
-func sendNextAIQuestion(bot *tgbotapi.BotAPI, gameID, category string) {
-	game := activeGames[gameID]
-	q, a, err := GenerateTriviaQuestion(category)
+func SendNextAIQuestion(bot *tgbotapi.BotAPI, gameID, category string) {
+	game := ActiveGames[gameID]
+	if game == nil {
+		return
+	}
+
+	WrongAnswersThisRound[gameID] =  make(map[int64]bool)
+	CorrectAnswersThisRound[gameID] = make(map[int64]bool)
+
+	text,err := GenerateTriviaQuestion(category)
 	if err != nil {
 		bot.Send(tgbotapi.NewMessage(game.Player1, "⚠️ Failed to generate a question."))
 		bot.Send(tgbotapi.NewMessage(game.Player2, "⚠️ Failed to generate a question."))
@@ -128,10 +133,45 @@ func sendNextAIQuestion(bot *tgbotapi.BotAPI, gameID, category string) {
 		return
 	}
 
-	// Store answer somewhere for verification
-	CurrentAnswer[gameID] = a
+	qa, err := ParseMCQText(text)
+	if err != nil {
+		bot.Send(tgbotapi.NewMessage(game.Player1, "❌ Invalid question format"))
+		bot.Send(tgbotapi.NewMessage(game.Player2, "❌ Invalid question format"))
+		EndGame(bot, gameID)
+		return
+	}
 
-	bot.Send(tgbotapi.NewMessage(game.Player1, "❓ "+q))
-	bot.Send(tgbotapi.NewMessage(game.Player2, "❓ "+q))
+	// Store answer to verify later
+	CurrentAnswer[gameID] = qa.Answer
+
+	AnsweredThisRound[gameID] = make(map[int64]bool)
+
+	// Format question with options
+	qText := fmt.Sprintf("❓ %s\n\nA. %s\nB. %s\nC. %s\nD. %s",
+		qa.Question,
+		qa.Options["A"],
+		qa.Options["B"],
+		qa.Options["C"],
+		qa.Options["D"],
+	)
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("A", "answer_A_"+gameID),
+			tgbotapi.NewInlineKeyboardButtonData("B", "answer_B_"+gameID),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("C", "answer_C_"+gameID),
+			tgbotapi.NewInlineKeyboardButtonData("D", "answer_D_"+gameID),
+		),
+	)
+
+	// Send to both players
+	msg1 := tgbotapi.NewMessage(game.Player1, qText)
+	msg1.ReplyMarkup = keyboard
+	bot.Send(msg1)
+
+	msg2 := tgbotapi.NewMessage(game.Player2, qText)
+	msg2.ReplyMarkup = keyboard
+	bot.Send(msg2)
 }
-

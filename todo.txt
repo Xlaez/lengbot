@@ -1,4 +1,4 @@
 1. Implement a retry mechanism that stores the data in the database so that if there is any issue with the model, it uses locally stored data.
 2. Implement leaderboards
-3. Implement Options: A, B, C, data
+3. Implement Options: A, B, C, D
 4. Make sure everything works well
