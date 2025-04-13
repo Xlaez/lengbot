@@ -10,12 +10,13 @@ import (
 
 	"github.com/Xlaez/lengbot/configs"
 	"github.com/Xlaez/lengbot/src"
+	"github.com/Xlaez/lengbot/src/enums"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var (
 	bot * tgbotapi.BotAPI
-	Category = "general"
+	Category = enums.General
 )
 
 func main () {
@@ -181,32 +182,32 @@ func handleButton(query *tgbotapi.CallbackQuery) {
 	// Categories
 
 	case "category_music":
-		src.StartTriviaMatchWithCategory(bot, query.Message, "music")
+		src.StartTriviaMatchWithCategory(bot, query.Message, enums.Music)
 	case "category_arts":
-		src.StartTriviaMatchWithCategory(bot, query.Message, "arts")
+		src.StartTriviaMatchWithCategory(bot, query.Message, enums.Arts)
 	case "category_africa":
-		src.StartTriviaMatchWithCategory(bot, query.Message, "africa")
+		src.StartTriviaMatchWithCategory(bot, query.Message, enums.Africa)
 	case "category_science":
-		src.StartTriviaMatchWithCategory(bot, query.Message, "science")
+		src.StartTriviaMatchWithCategory(bot, query.Message, enums.Science)
 	case "category_football":
-		src.StartTriviaMatchWithCategory(bot, query.Message, "football")
+		src.StartTriviaMatchWithCategory(bot, query.Message, enums.Football)
 	case "category_tech":
-		src.StartTriviaMatchWithCategory(bot, query.Message, "tech")
+		src.StartTriviaMatchWithCategory(bot, query.Message, enums.Tech)
 
 	// Challenges
 
 	case "challenge_music":
-		src.AskForChallenge(bot, query.From.ID, "music")
+		src.AskForChallenge(bot, query.From.ID, enums.Music)
 	case "challenge_arts":
-		src.AskForChallenge(bot, query.From.ID, "arts")
+		src.AskForChallenge(bot, query.From.ID, enums.Arts)
 	case "challenge_africa":
-		src.AskForChallenge(bot, query.From.ID, "africa")
+		src.AskForChallenge(bot, query.From.ID, enums.Africa)
 	case "challenge_science":
-		src.AskForChallenge(bot, query.From.ID, "science")
+		src.AskForChallenge(bot, query.From.ID, enums.Science)
 	case "challenge_football":
-		src.AskForChallenge(bot, query.From.ID, "football")
+		src.AskForChallenge(bot, query.From.ID, enums.Football)
 	case "challenge_tech":
-		src.AskForChallenge(bot, query.Message.From.ID, "tech")
+		src.AskForChallenge(bot, query.From.ID, enums.Tech)
 	}
 
 	// Acknowledge callback

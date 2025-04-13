@@ -3,9 +3,11 @@ package src
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/Xlaez/lengbot/configs"
+	"github.com/Xlaez/lengbot/src/enums"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -33,7 +35,7 @@ var Questions []string = make([]string, 0)
 func GenerateTriviaQuestion(category string) (string, error) {
 
 	if category == "" {
-		category = "music"
+		category = enums.General
 	}
 
 	prompt := getPromptForCategory(category)
@@ -53,7 +55,7 @@ func GenerateTriviaQuestion(category string) (string, error) {
 	}
 
 	fmt.Println("⚡ RAW HF BODY:", string(resp.Body()))
-
+	
 	var result []struct {
 		GeneratedText string `json:"generated_text"`
 	}
@@ -63,10 +65,9 @@ func GenerateTriviaQuestion(category string) (string, error) {
 	}
 
 	text := strings.TrimSpace(result[0].GeneratedText)
-	Questions = append(Questions, text)
 
 	if IsDuplicateQuestion(text) {
-		return GenerateTriviaQuestion(category)
+		return GenerateTriviaQuestion(category  + " " + fmt.Sprintf("unique_%d", rand.Intn(1000)))
 	}
 
 
@@ -75,9 +76,9 @@ func GenerateTriviaQuestion(category string) (string, error) {
 
 func getPromptForCategory(cat string) string {
 	basePrompt := `
-Generate a trivia question with 4 options and the correct answer.
-Do not repeat questions again.
-Never repeat any questions, they should be unique.
+Generate a completely new and unique trivia question with 4 options and the correct answer.
+The question MUST be different from any previous questions.
+Make it challenging but fair.
 Use this format exactly:
 
 Question: ...
@@ -89,59 +90,23 @@ D. ...
 Answer: A
 `
 
+	difficultyLevels := []string{"easy", "medium", "challenging", "difficult"}
+	randomDifficulty := difficultyLevels[rand.Intn(len(difficultyLevels))]
+
 	switch strings.ToLower(cat) {
-	case "science":
-		return basePrompt + "\nCategory: Science"
-	case "music":
-		return basePrompt + "\nCategory: Music"
-	case "football":
-		return basePrompt + "\nCategory: Football"
-	case "arts":
-		return basePrompt + "\nCategory: Arts"
-	case "tech":
-		return basePrompt + "\nCategory: Technology"
-	case "africa":
-		return basePrompt + "\nCategory: African History or Culture"
+	case enums.Science:
+		return basePrompt + fmt.Sprintf("\nCategory: Science\nDifficulty: %s", randomDifficulty)
+	case enums.Music:
+		return basePrompt + fmt.Sprintf("\nCategory: Music\nDifficulty: %s", randomDifficulty)
+	case enums.Football:
+		return basePrompt + fmt.Sprintf("\nCategory: Soccer\nDifficulty: %s", randomDifficulty)
+	case enums.Arts:
+		return basePrompt + fmt.Sprintf("\nCategory: Arts\nDifficulty: %s", randomDifficulty)
+	case enums.Tech:
+		return basePrompt + fmt.Sprintf("\nCategory: Technology\nDifficulty: %s", randomDifficulty)
+	case enums.Africa:
+		return basePrompt + fmt.Sprintf("\nCategory: African History or Culture\nDifficulty: %s", randomDifficulty)
 	default:
-		return basePrompt + "\nCategory: General Knowledge"
+		return basePrompt + fmt.Sprintf("\nCategory: General Knowledge\nDifficulty: %s", randomDifficulty)
 	}
 }
-
-// func GenerateTriviaQuestion(category string,) (question, answer string, err error){
-
-// 	ctx := context.Background()
-
-// 	req := openai.ChatCompletionRequest{
-// 		Model: openai.GPT3Dot5Turbo,
-// 		Messages: []openai.ChatCompletionMessage{
-// 			{
-// 				Role:    openai.ChatMessageRoleSystem,
-// 				Content: fmt.Sprintf("You are a trivia master. Generate trivia questions and answers on the subject of %.", category),
-// 			},
-// 			{
-// 				Role:    openai.ChatMessageRoleUser,
-// 				Content: `Generate one trivia question and its correct answer in the format:
-// Question: ...
-// Answer: ...`,
-// 			},
-// 		},
-// 		Temperature: 0.7,
-// 	}
-
-// 	resp, err := client.CreateChatCompletion(ctx, req)
-// 	if err != nil {
-// 		return "", "", err
-// 	}
-
-// 	content := resp.Choices[0].Message.Content
-// 	lines := strings.Split(content, "\n")
-
-// 	if len(lines) < 2 {
-// 		return "", "", errors.New("unexpected response from OpenAI")
-// 	}
-
-// 	question = strings.TrimPrefix(lines[0], "Question: ")
-// 	answer = strings.TrimPrefix(lines[1], "Answer: ")
-
-// 	return strings.TrimSpace(question), strings.TrimSpace(answer), nil
-// }

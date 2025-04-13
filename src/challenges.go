@@ -48,7 +48,10 @@ func SendChallengeCategoryMenu(bot *tgbotapi.BotAPI, chatId int64) {
 			tgbotapi.NewInlineKeyboardButtonData("⚽ Football", "challenge_football"),
 			tgbotapi.NewInlineKeyboardButtonData("🔬 Science", "challenge_science"),
 		),
-		// Add more as needed
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🌍 Africa", "category_africa"),
+			tgbotapi.NewInlineKeyboardButtonData("💻 Tech", "category_tech"),
+		),
 	)
 	bot.Send(msg)
 }
@@ -58,12 +61,6 @@ func Start1v1ChallengeWithCategory(bot *tgbotapi.BotAPI, challengerID, opponentI
 		bot.Send(tgbotapi.NewMessage(opponentID, "You can't challenge yourself 😅"))
 		return
 	}
-
-	// filteredQuestions := FilterQuestionsByCategory(category)
-	// if len(filteredQuestions) == 0 {
-	// 	bot.Send(tgbotapi.NewMessage(opponentID, fmt.Sprintf("No questions available for %s ❌", category)))
-	// 	return
-	// }
 
 	gameID := fmt.Sprintf("%d_%d", challengerID, opponentID)
 	ActiveGames[gameID] = &TriviaSession{
@@ -121,6 +118,32 @@ func SendNextAIQuestion(bot *tgbotapi.BotAPI, gameID, category string) {
 	if game == nil {
 		return
 	}
+
+	// Get usernames for both players
+	// player1, _ := bot.GetUserProfilePhotos(tgbotapi.NewUserProfilePhotos(game.Player1))
+	// player2, _ := bot.GetUserProfilePhotos(tgbotapi.NewUserProfilePhotos(game.Player2))
+
+	// Default fallback
+	player1Username := "Player 1"
+	player2Username := "Player 2"
+
+
+	// if player1 != nil {
+		// player1Username = player1
+	// }
+
+	// if player2 != nil {
+		// player2Username = player2.UserName
+	// }
+
+	scoreMessage := fmt.Sprintf("🎮 Scores:\n%s: %d\n%s: %d\n\n",
+		player1Username, game.Scores[game.Player1],
+		player2Username, game.Scores[game.Player2])
+
+	// Send scores to both players
+	bot.Send(tgbotapi.NewMessage(game.Player1, scoreMessage))
+	bot.Send(tgbotapi.NewMessage(game.Player2, scoreMessage))
+
 
 	WrongAnswersThisRound[gameID] =  make(map[int64]bool)
 	CorrectAnswersThisRound[gameID] = make(map[int64]bool)

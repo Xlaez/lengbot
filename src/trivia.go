@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Xlaez/lengbot/src/enums"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -39,7 +40,7 @@ func StartTriviaMatch(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	// Handle matching of opponent
 	// Handle edge-cases
 
-	key := "random"
+	key := enums.General
 
 	if waitingPool[key] == nil {
 		waitingPool[key] = msg.From
@@ -76,7 +77,7 @@ func StartTriviaMatch(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 
 func ProcessTriviaAnswer(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, category string) {
 	if category == "" {
-		category = "science"
+		category = enums.General
 	}
 
 	for id, game := range ActiveGames {
@@ -101,6 +102,16 @@ func ProcessTriviaAnswer(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, category s
 
 		// Track if this player answered
 		AnsweredThisRound[gameId][msg.From.ID] = true
+
+		player1Username := "Player 1"
+		player2Username := "Player 2"
+
+		scoreMessage := fmt.Sprintf("🎮 Scores:\n%s: %d\n%s: %d\n\n",
+			player1Username, game.Scores[game.Player1],
+			player2Username, game.Scores[game.Player2])
+
+		bot.Send(tgbotapi.NewMessage(game.Player1, scoreMessage))
+		bot.Send(tgbotapi.NewMessage(game.Player2, scoreMessage))
 
 		// If both players answered, proceed to the next question
 		if len(AnsweredThisRound[gameId]) == 2 {

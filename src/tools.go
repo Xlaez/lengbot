@@ -3,6 +3,15 @@ package src
 import (
 	"fmt"
 	"strings"
+	"sync"
+)
+
+var (
+    // Track questions that have actually been used in games
+    UsedQuestions = make(map[string]bool)
+    
+    // A mutex to protect concurrent access to UsedQuestions
+    questionsMutex sync.Mutex
 )
 
 func Normalize(s string) string {
@@ -56,16 +65,17 @@ func ParseMCQText(text string) (TriviaQA, error) {
 	return qa, nil
 }
 
-func IsDuplicateQuestion(question string) bool {
-	// Logic to check if the question was already asked
-
-	for _, game := range ActiveGames {
-		// Loop through active games and check if the question is already asked
-		for _, q := range game.Questions {
-			if q == question {
-				return true
-			}
-		}
-	}
-	return false
+func IsDuplicateQuestion(text string) bool {
+    questionsMutex.Lock()
+    defer questionsMutex.Unlock()
+    
+    // Normalize the text to handle minor differences
+    normalized := strings.ToLower(strings.TrimSpace(text))
+    
+    if UsedQuestions[normalized] {
+        return true
+    }
+    
+    UsedQuestions[normalized] = true
+    return false
 }
